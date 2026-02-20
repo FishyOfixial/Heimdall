@@ -3,6 +3,7 @@ import csv
 from multiprocessing import Pool, cpu_count
 
 RUNS = 30
+TICKS = 3600
 
 
 def run_single(args):
@@ -13,6 +14,8 @@ def run_single(args):
         "main.py",
         "--mode", mode,
         "--seed", str(seed),
+        "--ticks", str(TICKS),
+        "--headless",
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)

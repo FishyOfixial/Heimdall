@@ -9,8 +9,6 @@ from simulation.predictor import RiskPredictor
 from simulation.spatial import AdaptiveSpatialPartition
 from simulation.sue import StochasticUrbanSimulator
 from simulation.world import World
-from ui.controls import ControlState, Controls
-from ui.renderer import Renderer
 
 
 def build_world(width: int, height: int, patrol_count: int) -> World:
@@ -74,6 +72,8 @@ def main() -> None:
 
     # ---------- VISUAL MODE ----------
     import pygame
+    from ui.controls import ControlState, Controls
+    from ui.renderer import Renderer
 
     pygame.init()
     screen = pygame.display.set_mode((width, height))
