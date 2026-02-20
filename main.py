@@ -41,8 +41,8 @@ def main() -> None:
     parser.add_argument("--mode", choices=["reactive", "intelligent"], default="intelligent")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--metrics-file", type=str, default=None)
-    parser.add_argument("--headless", action="store_true")
     parser.add_argument("--ticks", type=int, default=3600)
+    parser.add_argument("--headless", action="store_true")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -65,7 +65,10 @@ def main() -> None:
             world.step(current_tick, sim_clock.tick_seconds, predictor, dispatcher, sue=sue)
 
         # imprimir SOLO csv limpio
-        header, row = world.metrics_engine.to_csv_row()
+        metrics = world.metrics_engine.snapshot()
+        header = ",".join(metrics.keys())
+        row = ",".join(str(v) for v in metrics.values())
+
         print(header)
         print(row)
         return

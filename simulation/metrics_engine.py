@@ -87,11 +87,6 @@ class MetricsEngine:
             "resolved_incidents": float(self.resolved_incidents),
         }
 
-    def to_csv_row(self):
-        header = "avg_response_time,coverage_percent,incidents_prevented,prediction_rate,prediction_precision,prediction_recall,incidents_total,resolved_incidents"
-        row = f"{self.avg_response_time},{self.coverage_percent},{self.incidents_prevented},{self.prediction_rate},{self.prediction_precision},{self.prediction_recall},{self.incidents_total},{self.resolved_incidents}"
-        return header, row
-
 
     def export_csv(self, file_path: str) -> None:
         metrics = self.snapshot()
