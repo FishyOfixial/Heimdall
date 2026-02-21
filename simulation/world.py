@@ -48,6 +48,7 @@ class World:
     telemetry_emitters: dict[str, TelemetryEmitter] = field(default_factory=dict)
     edge_twins: dict[str, EdgeTwin] = field(default_factory=dict)
     edge_alerts: list[dict] = field(default_factory=list)
+    predictor_recorded_incident_ids: set[int] = field(default_factory=set)
 
     fuel_low_threshold: float = 0.14
     fuel_critical_threshold: float = 0.04
@@ -154,6 +155,7 @@ class World:
     ) -> None:
         if sue is not None:
             self._generate_stochastic_incidents(sue, tick)
+        self._record_new_incidents_for_predictor(tick, predictor)
         self._update_patrols(dt, tick, predictor)
         self._resolve_stalled_incidents(tick, predictor)
         self._emit_telemetry(tick)
@@ -198,6 +200,15 @@ class World:
     def _generate_stochastic_incidents(self, sue: StochasticUrbanSimulator, tick: int) -> None:
         for x, y, severity in sue.generate_incidents(self, tick):
             self.create_incident(x, y, severity, tick)
+
+    def _record_new_incidents_for_predictor(self, tick: int, predictor: RiskPredictor) -> None:
+        for incident in self.incidents.values():
+            if incident.created_tick != tick:
+                continue
+            if incident.incident_id in self.predictor_recorded_incident_ids:
+                continue
+            predictor.record_incident(incident.x, incident.y, tick)
+            self.predictor_recorded_incident_ids.add(incident.incident_id)
 
     def _emit_telemetry(self, tick: int) -> None:
         unix_timestamp = 1_700_000_000 + tick
@@ -465,8 +476,6 @@ class World:
     def _resolve_incident(self, incident: Incident, tick: int, predictor: RiskPredictor) -> None:
         incident.active = False
         incident.resolved_tick = tick
-        zone = self.zone_for_point(incident.x, incident.y)
-        predictor.record_incident(zone, incident.severity, tick)
         self.metrics_engine.record_incident_resolved(incident.created_tick, tick)
 
         for patrol in self.patrols:

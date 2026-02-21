@@ -74,10 +74,8 @@ df = averages  # Usaremos el diccionario de promedios
 plot_fields = [
     "avg_response_time",
     "coverage_percent",
-    "incidents_prevented",
-    "prediction_rate",
-    "prediction_precision",
-    "prediction_recall",
+    "incidents_total",
+    "resolved_incidents",
 ]
 
 for metric in plot_fields:

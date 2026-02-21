@@ -43,6 +43,11 @@ def main() -> None:
     parser.add_argument("--metrics-file", type=str, default=None)
     parser.add_argument("--ticks", type=int, default=3600)
     parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--predictor-tau", type=float, default=40.0)
+    parser.add_argument("--predictor-alpha", type=float, default=0.08)
+    parser.add_argument("--predictor-threshold", type=float, default=0.55)
+    parser.add_argument("--predictor-window", type=int, default=160)
+    parser.add_argument("--predictor-radius", type=int, default=2)
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -55,7 +60,13 @@ def main() -> None:
         world = build_world(width, height, patrol_count=16)
         world.operating_mode = args.mode
 
-        predictor = RiskPredictor()
+        predictor = RiskPredictor(
+            tau=args.predictor_tau,
+            alpha=args.predictor_alpha,
+            high_risk_threshold=args.predictor_threshold,
+            memory_window=max(1, args.predictor_window),
+            spatial_radius=max(0, args.predictor_radius),
+        )
         world.risk_high_threshold = predictor.high_risk_threshold
         dispatcher = ReactiveDispatcher() if args.mode == "reactive" else IntelligentDispatcher()
         sue = StochasticUrbanSimulator(seed=args.seed)
@@ -91,7 +102,13 @@ def main() -> None:
     world = build_world(width, height, patrol_count=16)
     world.operating_mode = args.mode
 
-    predictor = RiskPredictor()
+    predictor = RiskPredictor(
+        tau=args.predictor_tau,
+        alpha=args.predictor_alpha,
+        high_risk_threshold=args.predictor_threshold,
+        memory_window=max(1, args.predictor_window),
+        spatial_radius=max(0, args.predictor_radius),
+    )
     world.risk_high_threshold = predictor.high_risk_threshold
     dispatcher = ReactiveDispatcher() if args.mode == "reactive" else IntelligentDispatcher()
     sue = StochasticUrbanSimulator(seed=args.seed)

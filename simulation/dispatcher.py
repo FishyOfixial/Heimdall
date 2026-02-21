@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import statistics
 from dataclasses import dataclass, field
 
 from simulation.patrol import PatrolState
@@ -147,11 +146,15 @@ class IntelligentDispatcher(BaseDispatcher):
             if available_slots <= 0:
                 break
 
+            target_prob = world.risk_map.get(zone, 0.0)
             unit_id = self._closest_eligible_to_zone(world, zone, eligible_ids, protected_ids, assigned_in_call)
             if unit_id is None:
                 continue
 
             if self._would_leave_large_empty_area(world, unit_id):
+                continue
+
+            if not self._should_redeploy_to_zone(world, unit_id, zone, target_prob):
                 continue
 
             patrol = world._patrol_by_id(unit_id)
@@ -167,12 +170,8 @@ class IntelligentDispatcher(BaseDispatcher):
         if not world.risk_map:
             return []
 
-        risks = list(world.risk_map.values())
-        mu = statistics.fmean(risks)
-        sigma = statistics.pstdev(risks) if len(risks) > 1 else 0.0
-        dynamic_threshold = mu + (1.2 * sigma)
-
-        selected = [zone for zone in predicted_zones if world.risk_map.get(zone, 0.0) >= dynamic_threshold]
+        threshold = getattr(world, "risk_high_threshold", 0.55)
+        selected = [zone for zone in predicted_zones if world.risk_map.get(zone, 0.0) >= threshold]
         selected.sort(key=lambda zone: world.risk_map.get(zone, 0.0), reverse=True)
         return selected
 
@@ -289,6 +288,29 @@ class IntelligentDispatcher(BaseDispatcher):
 
         gap_threshold = max(300.0, world.partition.cell_size * 4.8)
         return nearest > gap_threshold
+
+    def _zone_has_nearby_unit(self, world, zone: tuple[int, int], max_distance: float) -> bool:
+        zx, zy = world.partition.zone_center(zone)
+        for state in world.central_coordinator.global_state.values():
+            if not state.connected:
+                continue
+            if state.patrol_state in {"OUT_OF_SERVICE", "RESPONDING", "MAINTENANCE", "REFUELING", "EMERGENCY_RETURN"}:
+                continue
+            if math.hypot(state.position[0] - zx, state.position[1] - zy) <= max_distance:
+                return True
+        return False
+
+    def _should_redeploy_to_zone(self, world, patrol_id: int, zone: tuple[int, int], target_prob: float) -> bool:
+        state = world.central_coordinator.get_state_by_patrol_id(patrol_id)
+        if state is None or not state.connected:
+            return False
+        current_zone = world.zone_for_point(state.position[0], state.position[1])
+        current_prob = world.risk_map.get(current_zone, 0.0)
+        near_distance = max(40.0, world.partition.cell_size * 1.35)
+        has_nearby_unit = self._zone_has_nearby_unit(world, zone, near_distance)
+        if not has_nearby_unit:
+            return True
+        return target_prob > current_prob
 
 
 class ReactiveDispatcher(BaseDispatcher):
