@@ -1,4 +1,5 @@
 import csv
+import os
 import subprocess
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
@@ -11,6 +12,8 @@ MIN_COVERAGE = 60.0
 LOG_DIR = Path("logs")
 CRASH_DIR = LOG_DIR / "crash"
 INTELLIGENT_CONFIG_DIR = LOG_DIR / "intelligent_config"
+SHOW_INTELLIGENT_SEED = 1
+SHOW_INTELLIGENT_CONFIG = ""
 
 PREDICTOR_CONFIGS = [
     {"name": "baseline", "tau": 40.0, "alpha": 0.08, "threshold": 0.55, "window": 160, "radius": 2},
@@ -36,7 +39,7 @@ METRIC_FIELDS = [
 
 
 def run_single(args):
-    mode, seed, predictor = args
+    mode, seed, predictor, show_ui = args
     cmd = [
         "python",
         "main.py",
@@ -46,8 +49,11 @@ def run_single(args):
         str(SEED_START + seed),
         "--ticks",
         str(TICKS),
-        "--headless",
     ]
+    if not show_ui:
+        cmd.append("--headless")
+    else:
+        cmd.append("--emit-metrics")
     if mode == "intelligent" and predictor is not None:
         cmd.extend(
             [
@@ -92,10 +98,25 @@ def run_single(args):
 
 
 def run_batch(mode, predictor=None):
-    tasks = [(mode, seed, predictor) for seed in range(RUNS)]
+    tasks = [(mode, seed, predictor, False) for seed in range(RUNS)]
+    forced: dict[int, dict[str, float]] = {}
+    should_show = (
+        mode == "intelligent"
+        and predictor is not None
+        and 0 <= SHOW_INTELLIGENT_SEED < RUNS
+        and (not SHOW_INTELLIGENT_CONFIG or predictor["name"] == SHOW_INTELLIGENT_CONFIG)
+    )
+    if should_show:
+        visual_seed = SHOW_INTELLIGENT_SEED
+        forced[visual_seed] = run_single((mode, visual_seed, predictor, True))
+        tasks = [task for task in tasks if task[1] != visual_seed]
     workers = max(1, cpu_count() - 1)
     with Pool(workers) as pool:
-        return pool.map(run_single, tasks)
+        results = pool.map(run_single, tasks)
+    if forced:
+        for seed, row in forced.items():
+            results.insert(seed, row)
+    return results
 
 
 def write_rows(file_path, rows):

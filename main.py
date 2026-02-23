@@ -43,6 +43,7 @@ def main() -> None:
     parser.add_argument("--metrics-file", type=str, default=None)
     parser.add_argument("--ticks", type=int, default=3600)
     parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--emit-metrics", action="store_true")
     parser.add_argument("--predictor-tau", type=float, default=40.0)
     parser.add_argument("--predictor-alpha", type=float, default=0.08)
     parser.add_argument("--predictor-threshold", type=float, default=0.55)
@@ -135,6 +136,13 @@ def main() -> None:
 
         renderer.draw(world, sim_clock.current_tick, control_state.paused)
         pygame.display.flip()
+
+    if args.emit_metrics:
+        metrics = world.metrics_engine.snapshot()
+        header = ",".join(metrics.keys())
+        row = ",".join(str(v) for v in metrics.values())
+        print(header)
+        print(row)
 
     pygame.quit()
 
