@@ -22,7 +22,7 @@ averages = {}
 stddevs = {}
 
 for mode in modes:
-    file_path = Path(f"results_{mode}.csv")
+    file_path = Path(f"logs/results_{mode}.csv")
     if not file_path.exists():
         print(f"{file_path} no existe, saltando...")
         continue
