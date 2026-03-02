@@ -35,6 +35,7 @@ class World:
     next_incident_id: int = 1
     next_patrol_id: int = 1
     mechanic_base: tuple[float, float] = (0.0, 0.0)
+    mechanic_bases: list[tuple[float, float]] = field(default_factory=list)
     gas_stations: list[tuple[float, float]] = field(default_factory=list)
     max_patrols: int = 12
     enable_dynamic_patrols: bool = False
@@ -82,6 +83,21 @@ class World:
         bx = min(max(0.0, x), self.width)
         by = min(max(0.0, y), self.height)
         self.mechanic_base = (bx, by)
+        if self.mechanic_bases:
+            self.mechanic_bases[0] = self.mechanic_base
+        else:
+            self.mechanic_bases = [self.mechanic_base]
+
+    def set_mechanic_bases(self, bases: list[tuple[float, float]]) -> None:
+        normalized: list[tuple[float, float]] = []
+        for x, y in bases[:2]:
+            bx = min(max(0.0, x), self.width)
+            by = min(max(0.0, y), self.height)
+            normalized.append((bx, by))
+        if not normalized:
+            normalized = [(self.width * 0.5, self.height * 0.5)]
+        self.mechanic_bases = normalized
+        self.mechanic_base = self.mechanic_bases[0]
 
     def set_gas_stations(self, stations: list[tuple[float, float]]) -> None:
         normalized: list[tuple[float, float]] = []
@@ -89,23 +105,35 @@ class World:
             sx = min(max(0.0, x), self.width)
             sy = min(max(0.0, y), self.height)
             normalized.append((sx, sy))
-        self.gas_stations = normalized[:4]
+        self.gas_stations = normalized[:6]
 
     # Backward compatibility helper for old calls.
     def set_service_bases(self, bases: list[tuple[float, float]]) -> None:
         if bases:
-            self.set_mechanic_base(*bases[0])
-            self.set_gas_stations(bases[1:5])
-        else:
-            self.set_mechanic_base(self.width * 0.5, self.height * 0.5)
-            self.set_gas_stations(
-                [
-                    (self.width * 0.2, self.height * 0.2),
-                    (self.width * 0.8, self.height * 0.2),
-                    (self.width * 0.2, self.height * 0.8),
-                    (self.width * 0.8, self.height * 0.8),
-                ]
-            )
+            if len(bases) >= 2:
+                self.set_mechanic_bases(bases[:2])
+                self.set_gas_stations(bases[2:8])
+            else:
+                self.set_mechanic_base(*bases[0])
+                self.set_gas_stations(bases[1:7])
+            return
+
+        self.set_mechanic_bases(
+            [
+                (self.width * 0.40, self.height * 0.45),
+                (self.width * 0.60, self.height * 0.55),
+            ]
+        )
+        self.set_gas_stations(
+            [
+                (self.width * 0.15, self.height * 0.18),
+                (self.width * 0.50, self.height * 0.16),
+                (self.width * 0.85, self.height * 0.20),
+                (self.width * 0.15, self.height * 0.82),
+                (self.width * 0.50, self.height * 0.84),
+                (self.width * 0.85, self.height * 0.80),
+            ]
+        )
 
     def add_patrol(self, patrol: Patrol) -> None:
         patrol.home_zone = self.zone_for_point(patrol.x, patrol.y)
@@ -432,7 +460,21 @@ class World:
     def _service_target_for(self, patrol: Patrol, need_kind: str, objective: tuple[float, float] | None = None) -> tuple[float, float]:
         if need_kind == "fuel":
             return self._best_gas_station_for(patrol, objective)
-        return self.mechanic_base
+        return self._best_mechanic_base_for(patrol, objective)
+
+    def _best_mechanic_base_for(self, patrol: Patrol, objective: tuple[float, float] | None = None) -> tuple[float, float]:
+        bases = self.mechanic_bases or [self.mechanic_base]
+        px, py = self._patrol_position_for_planning(patrol)
+        best = bases[0]
+        best_cost = float("inf")
+        for base in bases:
+            cost = math.hypot(px - base[0], py - base[1])
+            if objective is not None:
+                cost += 0.2 * math.hypot(base[0] - objective[0], base[1] - objective[1])
+            if cost < best_cost:
+                best_cost = cost
+                best = base
+        return best
 
     def _best_gas_station_for(self, patrol: Patrol, objective: tuple[float, float] | None = None) -> tuple[float, float]:
         stations = self.gas_stations or [self.mechanic_base]
@@ -456,7 +498,7 @@ class World:
         return fuel_after_arrival <= self.fuel_critical_threshold
 
     def _predictive_mech_needed(self, patrol: Patrol, telemetry: TelemetryPacket) -> bool:
-        target = self.mechanic_base
+        target = self._best_mechanic_base_for(patrol, self._patrol_objective_point(patrol))
         distance = math.hypot(telemetry.position[0] - target[0], telemetry.position[1] - target[1])
         mech_needed = distance * self.mech_wear_per_unit
         mech_health = 1.0 if telemetry.mechanical_status == "OK" else (0.45 if telemetry.mechanical_status == "WARN" else 0.15)
@@ -621,7 +663,8 @@ class World:
             zones.add(self.zone_for_point(px, py))
         for incident in self.active_incidents():
             zones.add(self.zone_for_point(incident.x, incident.y))
-        zones.add(self.zone_for_point(self.mechanic_base[0], self.mechanic_base[1]))
+        for mx, my in (self.mechanic_bases or [self.mechanic_base]):
+            zones.add(self.zone_for_point(mx, my))
         for gx, gy in self.gas_stations:
             zones.add(self.zone_for_point(gx, gy))
         return zones

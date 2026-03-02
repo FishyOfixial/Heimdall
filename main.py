@@ -14,15 +14,19 @@ from simulation.world import World
 def build_world(width: int, height: int, patrol_count: int) -> World:
     partition = AdaptiveSpatialPartition(width=float(width), height=float(height), unit_count=patrol_count)
     world = World(width=float(width), height=float(height), partition=partition)
-    world.set_mechanic_base(
-        random.uniform(width * 0.42, width * 0.58),
-        random.uniform(height * 0.42, height * 0.58),
+    world.set_mechanic_bases(
+        [
+            (random.uniform(width * 0.18, width * 0.35), random.uniform(height * 0.40, height * 0.62)),
+            (random.uniform(width * 0.65, width * 0.82), random.uniform(height * 0.40, height * 0.62)),
+        ]
     )
     world.set_gas_stations(
         [
             (random.uniform(width * 0.08, width * 0.25), random.uniform(height * 0.10, height * 0.25)),
+            (random.uniform(width * 0.40, width * 0.60), random.uniform(height * 0.08, height * 0.22)),
             (random.uniform(width * 0.75, width * 0.92), random.uniform(height * 0.10, height * 0.25)),
             (random.uniform(width * 0.08, width * 0.25), random.uniform(height * 0.75, height * 0.90)),
+            (random.uniform(width * 0.40, width * 0.60), random.uniform(height * 0.78, height * 0.92)),
             (random.uniform(width * 0.75, width * 0.92), random.uniform(height * 0.75, height * 0.90)),
         ]
     )

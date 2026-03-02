@@ -56,10 +56,11 @@ class Renderer:
             pygame.draw.line(self.screen, self.GRID, (0, y), (int(world.width), y), 1)
 
     def _draw_service_zone(self, world) -> None:
-        mx, my = world.mechanic_base
-        pygame.draw.circle(self.screen, self.SERVICE_ZONE, (int(mx), int(my)), 13, width=2)
-        label = self.font.render("MECANICO", True, self.SERVICE_ZONE)
-        self.screen.blit(label, (int(mx) + 14, int(my) - 8))
+        mechanic_bases = world.mechanic_bases or [world.mechanic_base]
+        for idx, (mx, my) in enumerate(mechanic_bases, start=1):
+            pygame.draw.circle(self.screen, self.SERVICE_ZONE, (int(mx), int(my)), 13, width=2)
+            label = self.font.render(f"MECANICO {idx}", True, self.SERVICE_ZONE)
+            self.screen.blit(label, (int(mx) + 14, int(my) - 8))
 
         for idx, (gx, gy) in enumerate(world.gas_stations, start=1):
             pygame.draw.rect(self.screen, self.GAS_STATION, pygame.Rect(int(gx) - 7, int(gy) - 7, 14, 14), width=2)

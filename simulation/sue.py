@@ -90,8 +90,11 @@ class StochasticUrbanSimulator:
         return 0.8        # madrugada tranquila
 
     def _sample_severity(self, lam: float) -> int:
-        if lam > 0.02:
-            return self._rng.choices([3, 4, 5], weights=[2, 4, 3])[0]
-        if lam > 0.01:
-            return self._rng.choices([2, 3, 4], weights=[3, 4, 2])[0]
-        return self._rng.choices([1, 2, 3], weights=[5, 3, 1])[0]
+        # Keep severity strictly in [1..5], but avoid collapsing almost everything to 4-5.
+        if lam >= 8.0:
+            return self._rng.choices([1, 2, 3, 4, 5], weights=[1, 2, 3, 5, 6])[0]
+        if lam >= 5.0:
+            return self._rng.choices([1, 2, 3, 4, 5], weights=[2, 4, 5, 5, 4])[0]
+        if lam >= 3.0:
+            return self._rng.choices([1, 2, 3, 4, 5], weights=[4, 6, 5, 3, 2])[0]
+        return self._rng.choices([1, 2, 3, 4, 5], weights=[6, 5, 3, 2, 1])[0]

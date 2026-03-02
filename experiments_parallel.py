@@ -7,7 +7,7 @@ from statistics import fmean, pstdev
 
 SEED_START = 0
 RUNS = 30
-TICKS = 3600
+TICKS = 500
 MIN_COVERAGE = 60.0
 LOG_DIR = Path("logs")
 CRASH_DIR = LOG_DIR / "crash"
