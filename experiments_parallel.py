@@ -150,7 +150,8 @@ def score_summary(summary):
 def run_reactive():
     print(f"\nRunning reactive baseline ({RUNS} runs)...\n")
     rows = run_batch("reactive")
-    write_rows("results_reactive.csv", rows)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    write_rows(LOG_DIR / "results_reactive.csv", rows)
     return summarize_rows(rows)
 
 
