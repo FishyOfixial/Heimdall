@@ -1,217 +1,138 @@
-# Prototipo de Sistema Inteligente de Respuesta a Incidentes
+## Hackatón HPE – Fase II
 
-**Hackatón HPE – Fase II**
+Heimdall es un proyecto diseñado para evidenciar la factibilidad técnica y estratégica de la toma de decisiones fundamentadas en datos sintéticos y análisis predictivo en tiempo casi real. El proyecto trasciende la mera simulación descriptiva para consolidarse como un sistema evaluable orientado al apoyo en la toma de decisiones operativas.
 
-Este repositorio contiene un prototipo de simulación de una ciudad donde se generan incidentes (eventos) y un sistema de despacho decide cómo responderlos. El objetivo es comparar dos enfoques:
+El sistema compara dos estrategias fundamentales:
 
-* **Reactivo**: atiende los incidentes cuando aparecen.
-* **Inteligente (predictivo)**: intenta anticipar dónde ocurrirán y posicionar unidades antes de que sucedan.
-
-El propósito del proyecto es evaluar si un sistema de predicción puede **reducir el tiempo de respuesta y prevenir incidentes**, manteniendo o mejorando la cobertura del sistema.
+- **Reactiva (Baseline)**: Las unidades son movilizadas únicamente después de la aparición de un incidente confirmado, utilizando una política determinística basada en el tiempo estimado de llegada.
+- **Inteligente (Predictiva)**: El sistema realiza un análisis continuo de datos observables, estima probabilidades de riesgo y redistribuye patrullas proactivamente antes de la ocurrencia de eventos.
 
 ---
 
-## 1. Idea general
+## Contexto del Problema
 
-La simulación modela una ciudad dividida en celdas. Durante cada *tick* del reloj virtual:
+Los sistemas tradicionales de despacho policial operan bajo un modelo reactivo. Este enfoque produce:
 
-1. Se generan incidentes de manera estocástica.
-2. Las unidades (patrullas) se mueven por el mapa.
-3. El sistema decide a dónde enviarlas.
-4. Se registran métricas de desempeño.
+- Tiempos de respuesta elevados.
+- Sobrecarga de ciertas unidades.
+- Zonas urbanas sin cobertura.
+- Imposibilidad de anticipar eventos.
+- Vulnerabilidad ante fallos internos.
 
-El modo **reactivo** solo reacciona a eventos ya ocurridos.
-El modo **inteligente** utiliza un predictor de zonas calientes (*hotspots*) para adelantarse.
+El proyecto propone sustituir la reacción posterior al evento por anticipación basada en análisis de datos operativos continuos.
 
 ---
 
-## 2. Arquitectura del sistema
+## Objetivos del Sistema
 
-El sistema está dividido en módulos desacoplados para facilitar experimentación:
+### Objetivo General
+
+Desarrollar un sistema multi-agente de gemelos digitales policiales interconectados. Este sistema debe ser capaz de:
+
+- Analizar telemetría operativa en tiempo casi real.
+- Predecir probabilidades de incidente por zona.
+- Detectar fallos internos de unidades.
+- Optimizar la asignación de recursos.
+- Asistir la toma de decisiones del centro de control, sin ejercer control autónomo real sobre las unidades.
+
+### Indicadores de Desempeño (KPI)
+
+El sistema será evaluado mediante las siguientes métricas cuantificables:
+
+- Reducción del tiempo promedio de respuesta ≥ 20%.
+- Reducción del consumo promedio de combustible ≥ 10%.
+- Cobertura urbana operativa ≥ 95% del territorio simulado.
+- Precisión en detección de anomalías internas ≥ 90%.
+
+---
+
+## Arquitectura Técnica
+
+Se adopta una arquitectura híbrida distribuida Edge–Cloud estructurada en contenedores Docker y orquestada con Kubernetes.
+
+- **Nivel Edge (Patrullas):** Cada unidad ejecuta un gemelo digital local responsable de representar su estado operativo, validar la coherencia básica de los datos y detectar fallas mecánicas inmediatas.
+- **Nivel Cloud (Centro de Coordinación):** Una plataforma central consolida la información global, supervisa el sistema completo, coordina múltiples patrullas y prepara los datos para el análisis predictivo.
+
+El sistema asegura la integridad de los datos mediante comunicación MQTT sobre TLS 1.3, autenticación mutua por certificados, y cifrado en tránsito y reposo (AES-256).
+
+---
+
+## Modelo Operativo y de Inteligencia Artificial
+
+### Generación de Telemetría y Simulación
+
+Debido a la inexistencia de sensores físicos, el sistema emplea telemetría sintética con una frecuencia de actualización de 1 Hz. Los incidentes son generados por un Simulador Urbano Estocástico (SUE) independiente, el cual utiliza un proceso de Poisson espacial–temporal para modelar la ocurrencia de eventos.
+
+### Lógica de Despacho (Optimización Multi-Criterio)
+
+Para asignar unidades a un incidente, el sistema evalúa una función de costo que minimiza el tiempo esperado de atención sin comprometer la estabilidad del sistema. El tiempo estimado de llegada (ETA) se calcula como:
+
+```
+ETA = Distancia / Velocidad
+```
+
+La asignación selecciona la patrulla que minimiza múltiples variables, incluyendo el riesgo mecánico y la pérdida de cobertura territorial.
+
+### Modelo Predictivo
+
+El cálculo de riesgo se basa en un modelo matemático híbrido compuesto por:
+
+- **Media móvil ponderada con decaimiento temporal:** Evalúa el riesgo histórico donde los eventos recientes incrementan significativamente el riesgo y los antiguos tienen influencia marginal.
+- **Inferencia probabilística Bayesiana:** Ajusta el modelo histórico utilizando factores contextuales observables como la hora del día y el nivel de tráfico.
+
+### Detección de Amenazas Internas
+
+El sistema incorpora un modelo de amenazas basado en inconsistencias medibles. Se generan alertas automáticas y reasignación preventiva cuando ocurre:
+
+- Discrepancia GPS-velocidad mayor a 10 km/h sostenida por 5 segundos.
+- Caída de combustible no proporcional con la distancia recorrida.
+- Unidad sin respuesta operativa durante 30 segundos.
+- Temperatura crítica del motor (> 105°C) sostenida por más de 30 ciclos de simulación.
+
+---
+
+## Estructura del Repositorio
 
 ```
 Prototipo/
 │
 ├── main.py                      -> Punto de entrada de la simulación
 ├── experiments_parallel.py      -> Ejecuta múltiples simulaciones en paralelo
-├── generate_compare.py          -> Calcula promedios, desviaciones y genera gráfica
+├── generate_compare.py          -> Agrega resultados y genera comparación
 │
 ├── simulation/
-│   ├── world.py                 -> Entorno de simulación (mapa, tiempo, unidades)
-│   ├── incident_generator.py    -> Generación probabilística de incidentes
-│   ├── dispatcher.py            -> Lógica de asignación de unidades
-│   ├── predictor.py             -> Sistema de predicción de hotspots
-│   ├── unit.py                  -> Agentes móviles (patrullas)
-│   └── metrics_engine.py        -> Registro y cálculo de métricas
+│   ├── world.py                 -> Mundo de simulación (mapa, tiempo, unidades)
+│   ├── incident_generator.py    -> Generación de incidentes (SUE)
+│   ├── dispatcher.py            -> Lógica de despacho/asignación de unidades
+│   ├── predictor.py             -> Predicción de zonas de riesgo (hotspots)
+│   ├── unit.py                  -> Gemelos digitales de unidades móviles
+│   └── metrics_engine.py        -> Registro de auditoría y cálculo de métricas
 │
-└── results_*.csv                -> Resultados de corridas
+└── results_*.csv                -> Resultados de corridas para evaluación
 ```
 
 ---
 
-## 3. Modelo de simulación
+## Requisitos y Ejecución
 
-### Tiempo
+- **Python 3.10+** (probado en 3.12)
 
-El sistema avanza por pasos discretos llamados **ticks**.
-Un experimento típico corre **3600 ticks** (simula varias horas de operación).
+### Corrida individual:
 
-### Incidentes
-
-Los incidentes se generan con probabilidad dependiente de zona y tiempo. Cada incidente tiene:
-
-* Posición
-* Tick de ocurrencia
-* Tick de resolución
-
-Un incidente puede:
-
-* Ser atendido
-* Ser atendido tarde
-* Ser prevenido (solo modo inteligente)
-
----
-
-## 4. Sistema predictivo (modo inteligente)
-
-El predictor construye un mapa de calor dinámico basado en:
-
-* Historial reciente de incidentes
-* Frecuencia por celda
-
-El sistema entonces:
-
-1. Identifica zonas con mayor probabilidad de incidentes.
-2. Mueve unidades preventivamente.
-3. Si ocurre un evento cerca, la respuesta es inmediata.
-
-Esto permite reducir el **tiempo de respuesta promedio**.
-
----
-
-## 5. Métricas evaluadas
-
-Cada corrida genera un CSV con las siguientes métricas:
-
-| Métrica              | Significado                               |
-| -------------------- | ----------------------------------------- |
-| avg_response_time    | Tiempo promedio de respuesta              |
-| coverage_percent     | Porcentaje del mapa cubierto por unidades |
-| incidents_prevented  | Incidentes evitados (solo inteligente)    |
-| prediction_rate      | Frecuencia de predicciones realizadas     |
-| prediction_precision | Precisión de predicción                   |
-| prediction_recall    | Recall de predicción                      |
-| incidents_total      | Total de incidentes generados             |
-| resolved_incidents   | Incidentes resueltos                      |
-
----
-
-## 6. Ejecución de la simulación
-
-Requisitos:
-
-* Python 3.10+ (probado en 3.12)
-
-Ejecutar una corrida individual:
-
-```
+```bash
 python main.py --mode reactive --seed 1
 python main.py --mode intelligent --seed 1
 ```
 
-El parámetro `seed` permite reproducibilidad experimental.
+### Experimentos con múltiples corridas (Estabilidad estadística):
 
-Cada ejecución genera una fila CSV con resultados.
-
----
-
-## 7. Múltiples corridas (experimentos)
-
-Para obtener resultados estadísticamente válidos se deben ejecutar muchas simulaciones con diferentes semillas:
-
-```
+```bash
 python experiments_parallel.py
 ```
 
-Este script:
+### Comparación y análisis de métricas:
 
-* Ejecuta múltiples seeds
-* Usa multiprocessing
-* Genera:
-
-```
-results_reactive.csv
-results_intelligent.csv
-```
-
----
-
-## 8. Comparación y análisis
-
-Después de ejecutar los experimentos:
-
-```
+```bash
 python generate_compare.py
 ```
 
-Esto:
-
-1. Calcula promedio
-2. Calcula desviación estándar
-3. Genera `compare.csv`
-4. Muestra gráfica comparativa
-
-La gráfica compara principalmente:
-
-* Tiempo de respuesta
-* Incidentes prevenidos
-* Cobertura
-
----
-
-## 9. Interpretación esperada
-
-El sistema inteligente debería:
-
-* Reducir significativamente el **tiempo de respuesta**
-* Prevenir incidentes
-* Mantener cobertura similar al sistema reactivo
-
-Si esto se cumple, el prototipo valida la hipótesis del proyecto.
-
----
-
-## 10. Limitaciones del prototipo
-
-Este es un modelo experimental, no un sistema real. Limitaciones:
-
-* El mapa es una grilla simplificada
-* No hay tráfico real
-* Las unidades tienen velocidad constante
-* El predictor es heurístico (no ML real)
-* No se modela comportamiento humano complejo
-
-El objetivo es evaluar el **concepto**, no replicar una ciudad real.
-
----
-
-## 11. Posibles mejoras futuras
-
-* Modelo de tráfico realista
-* Aprendizaje automático (ML) real
-* Predicción por hora del día
-* Tipos de incidentes
-* Recursos limitados
-* Rutas óptimas
-
----
-
-## 12. Objetivo del Hackatón
-
-Demostrar que un sistema de posicionamiento preventivo basado en predicción puede mejorar la operación de servicios de respuesta (seguridad, emergencias, logística urbana) mediante simulación reproducible y medible.
-
-Este prototipo busca validar la viabilidad técnica antes de implementar en un entorno real.
-
----
-
-**Proyecto desarrollado para el Hackatón de Hewlett Packard Enterprise (HPE).**
