@@ -135,4 +135,18 @@ python experiments_parallel.py
 ```bash
 python generate_compare.py
 ```
+---
 
+## Equipo y Créditos
+
+**Proyecto desarrollado para el Hackatón de Hewlett Packard Enterprise (HPE) - Fase II.**
+
+* **Equipo:** MonkeyTypers (México)
+* *Periodo de desarrollo:** Febrero – Marzo 2026
+
+**Integrantes:**
+* [Ivan Ramos] - [GitHub](https://github.com/FishyOfixial)
+* [Lucas Castineiras] - [GitHub](https://github.com/Locas1000)
+* [Patricio Dávila ] - [GitHub](https://github.com/patodaas)
+* [Juan Marco ] -   [GitHub](https://github.com/JuanMarcoGosselin)
+* [Carlo Virgilio ] -  [GitHub](https://github.com/carlovirgil)
